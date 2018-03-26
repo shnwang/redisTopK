@@ -1,5 +1,6 @@
 package cli
 
+import _ "fmt"
 import "errors"
 import "strconv"
 import "strings"
@@ -67,12 +68,29 @@ func (c *Cli) GetLength(key string) (int, error) {
 	return decode(ret)
 }
 
-func CliNew(addr string, pswd string) Cli {
+func (c *Cli) GetDatabases() int {
+	ret, err := c.client.ConfigGet("databases").Result()
+	if err != nil {
+		return 0
+	}
+	switch i := ret[1].(type) {
+	case string:
+		num, err := strconv.Atoi(i)
+		if err != nil {
+			return 0
+		}
+		return num
+	default:
+		return 0
+	}
+}
+
+func CliNew(addr string, pswd string, db int) Cli {
 	c := Cli{}
 	c.client = *redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: pswd,
-		DB:       0,
+		DB:       db,
 	})
 	c.cursor = 0
 	c.start = false
