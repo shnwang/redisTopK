@@ -2,9 +2,19 @@ package main
 
 import "fmt"
 import "flag"
+import "sync"
+import "time"
 
 import "redisTopK/cli"
 import "redisTopK/topk"
+
+var (
+	host string
+	pswd string
+	k    int
+)
+
+var wg sync.WaitGroup
 
 type Info struct {
 	name string
@@ -20,11 +30,36 @@ func (i Info) Str() string {
 	return str
 }
 
-var (
-	host string
-	pswd string
-	k    int
-)
+// get keys from db
+func getKeys(db int, c chan Info) {
+	wg.Add(1)
+	client := cli.CliNew(host, pswd, db)
+	var keys []string
+	var err error
+	keys, err = client.Next()
+	for err == nil {
+		for _, key := range keys {
+			length, err := client.GetLength(key)
+			if err == nil {
+				c <- Info{key, length}
+			}
+		}
+		keys, err = client.Next()
+	}
+	c <- Info{"", -1}
+}
+
+// update statistics
+func stats(t *topk.TopK, c chan Info) {
+	for {
+		i := <-c
+		if i.size != -1 {
+			t.Insert(i)
+		} else {
+			wg.Done()
+		}
+	}
+}
 
 func main() {
 	// parse args
@@ -33,21 +68,22 @@ func main() {
 	flag.IntVar(&k, "k", 10, "top k")
 	flag.Parse()
 
-	tk := topk.TopKNew(k)
-	client := cli.CliNew(host, pswd)
-	var keys []string
-	var err error
-	keys, err = client.Next()
-	for err == nil {
-		for _, key := range keys {
-			length, err := client.GetLength(key)
-			if err == nil {
-				// insert into tk table
-				tk.Insert(Info{key, length})
-			}
-		}
-		keys, err = client.Next()
+	client := cli.CliNew(host, pswd, 0)
+	dbs := client.GetDatabases()
+	if dbs == 0 {
+		fmt.Printf("redis has no db")
+		return
 	}
-	fmt.Printf("redis %v top %v value:\n", host, k)
+
+	c := make(chan Info, 100)
+	tk := topk.TopKNew(k)
+	go stats(tk, c)
+	for j := 0; j < dbs; j++ {
+		go getKeys(j, c)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	wg.Wait()
 	tk.Print()
+	close(c)
 }
