@@ -51,10 +51,13 @@ func getKeys(db int, c chan Info) {
 
 // update statistics
 func stats(t *topk.TopK, c chan Info) {
+    count := 0
 	for {
 		i := <-c
 		if i.size != -1 {
 			t.Insert(i)
+            count++
+            fmt.Printf("\rscaned keys: %v", count)
 		} else {
 			wg.Done()
 		}
@@ -84,6 +87,7 @@ func main() {
 
 	time.Sleep(100 * time.Millisecond)
 	wg.Wait()
+    fmt.Println("")
 	tk.Print()
 	close(c)
 }
