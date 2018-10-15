@@ -12,7 +12,7 @@ It is recommand to run against a static redis server.
 * enable key type specified from cmdline
 
 ## build
-setup correct GOPATH, run `go build` at root path of the prokect
+setup correct GOPATH, run `go build` at root path of the project
 
 ## run
 Usage of ./redisTopK: -h
