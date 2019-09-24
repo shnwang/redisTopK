@@ -39,6 +39,26 @@ func (t *TopK) Insert(d Data) {
 	}
 }
 
+func (t *TopK) GetData() ([]Data){
+    return t.data;
+}
+
+func (t *TopK) Min() Data {
+    if len(t.data) == 0 {
+        return nil;
+    } else {
+        return t.data[0];
+    }
+}
+
+func (t *TopK) Max() Data {
+    if len(t.data) == 0 {
+        return nil;
+    } else {
+        return t.data[len(t.data)-1];
+    }
+}
+
 func (t *TopK) Print() {
 	for _, d := range t.data {
 		fmt.Printf("%v\n", d.Str())
